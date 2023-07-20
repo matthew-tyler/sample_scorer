@@ -23,15 +23,12 @@ export const actions = {
                 password: 'default_password',
                 passwordConfirm: 'default_password'
             };
-
-            console.log(locals);
             await locals.pb.collection('users').create(user);
 
-            return { success: true };
+            return { success: true, message: code };
 
         } catch (err) {
-            console.log(err);
-            throw (err)
+            return { success: false, message: err };
         }
     }
 
