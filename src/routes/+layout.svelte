@@ -25,8 +25,8 @@
 				<strong class="text-xl uppercase hidden lg:inline"><a href="/">PairWisely</a></strong>
 			</svelte:fragment>
 			<svelte:fragment slot="trail">
+				<LightSwitch />
 				{#if $current_user}
-					<LightSwitch />
 					<p class="text">{$current_user.username}</p>
 					<button type="button" class="btn variant-filled" on:click={logout}>Logout</button>
 				{/if}
