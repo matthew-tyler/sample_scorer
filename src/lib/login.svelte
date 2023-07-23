@@ -1,12 +1,16 @@
 <script>
-	import { pb } from './pocketbase';
+	import { pb, image_pairs } from './pocketbase';
 	import { goto } from '$app/navigation';
 
 	let user_code = '';
 
 	async function login() {
 		try {
-			await pb.collection('users').authWithPassword(user_code, 'default_password');
+			const user = await pb
+				.collection('users')
+				.authWithPassword(user_code, 'default_password', {}, { expand: 'group' });
+
+			$image_pairs = user.record.expand.group.pairs;
 			goto('/label');
 		} catch (err) {
 			console.log(err);

@@ -5,3 +5,5 @@ pb.authStore.onChange(() => {
     current_user.set(pb.authStore.model)
     document.cookie = pb.authStore.exportToCookie({ httpOnly: false })
 })
+
+
