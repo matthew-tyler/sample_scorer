@@ -25,7 +25,7 @@
 		position = Math.max(position - 1, 0);
 	};
 	const forward = () => {
-		position = Math.min(position + 1, $image_pairs.length);
+		position = Math.min(position + 1, $image_pairs.length - 1);
 	};
 
 	const key_press = (e) => {
