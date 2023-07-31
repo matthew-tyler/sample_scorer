@@ -48,7 +48,7 @@
 <div class="grid grid-cols-1 md:grid-cols-7 gap-6 items-center justify-items-center">
 	<!-- svelte-ignore a11y-click-events-have-key-events -->
 	<div
-		class="flex flex-col items-center p-4 rounded-lg cursor-pointer w-full h-64 md:h-auto md:col-span-3
+		class="flex flex-col items-center p-4 rounded-lg cursor-pointer w-full h-64 md:col-span-3
 		{score === IMG1
 			? 'bg-green-300 hover:bg-green-200'
 			: score === IMG2
@@ -69,7 +69,7 @@
 				? 'Similar'
 				: 'Unrated'}
 		</h3>
-		<img src="/{image1}.png" alt="Sample 1" class="object-contain h-3/4 md:h-auto" />
+		<img src="/{image1}.png" alt="Sample 1" class="object-contain h-3/4 bg-black" />
 	</div>
 
 	<div class="flex flex-col justify-center items-center p-4 md:col-span-1">
@@ -78,7 +78,7 @@
 
 	<!-- svelte-ignore a11y-click-events-have-key-events -->
 	<div
-		class="flex flex-col items-center p-4 rounded-lg cursor-pointer w-full h-64 md:h-auto md:col-span-3
+		class="flex flex-col items-center p-4 rounded-lg cursor-pointer w-full h-64 md:col-span-3
 		{score === IMG2
 			? 'bg-green-300 hover:bg-green-200'
 			: score === IMG1
@@ -97,7 +97,7 @@
 				? 'Similar'
 				: 'Unrated'}
 		</h3>
-		<img src="/{image2}.png" alt="Sample 2" class="object-contain h-3/4 md:h-auto" />
+		<img src="/{image2}.png" alt="Sample 2" class="object-contain h-3/4 bg-black" />
 	</div>
 </div>
 
