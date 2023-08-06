@@ -82,8 +82,22 @@ class HeapNode {
 }
 
 
+/**
+ * Judgo is a class representing the state and logic of a judgment process. It maintains the relationships
+ * between documents, organizes them into a tree-like structure, and provides methods for comparing and
+ * ranking the documents based on user input.
+ *
+ * @example
+ * const judgo = new Judgo(documents, database);
+ * await judgo.greater_than();
+ */
 class Judgo {
 
+    /**
+     * Constructs a new Judgo instance with the given documents and database.
+     * @param {Object[]} documents - Array of documents to be ranked.
+     * @param {PBWrapper} database - The PocketBase wrapper instance to interact with the database.
+     */
     constructor(documents, database) {
         if (documents.length > 0) {
             this.documents = documents.map((document) => new HeapNode(document));
@@ -94,6 +108,11 @@ class Judgo {
         }
     }
 
+    /**
+     * Constructs a Judgo instance from a plain object, converting plain objects into HeapNodes as needed.
+     * @param {Object} object - The object to convert into a Judgo instance.
+     * @returns {Judgo} Returns a new Judgo instance constructed from the object.
+     */
     static fromObject(object) {
         const judgo = new Judgo([]);
         judgo.documents = object.documents.map(document => HeapNode.fromObject(document));
@@ -103,6 +122,11 @@ class Judgo {
         return judgo;
     }
 
+    /**
+     * Asynchronously constructs a Judgo instance from the database.
+     * @param {PBWrapper} database - The PocketBase wrapper instance to interact with the database.
+     * @returns {Promise<Judgo|null>} Returns a Promise resolving to a new Judgo instance, or null if not found.
+     */
     static async fromDatabase(database) {
         const judgo_obj = await database.read_state();
         if (judgo_obj !== null) {
@@ -111,6 +135,11 @@ class Judgo {
         return null;
     }
 
+    /**
+     * Compares this Judgo instance with another for equality.
+     * @param {Judgo} otherJudgo - The other Judgo instance to compare.
+     * @returns {boolean} Returns true if the Judgo instances are equal, false otherwise.
+     */
     equals(otherJudgo) {
         if (!otherJudgo || !(otherJudgo instanceof Judgo)) return false;
         if (!this.root.equals(otherJudgo.root)) return false;
@@ -121,13 +150,18 @@ class Judgo {
         return true;
     }
 
+    /**
+     * @private
+     * Retrieves the next HeapNode from the internal documents array and updates the state as needed.
+     * @returns {HeapNode|null} Returns the next HeapNode if available, or null if no more documents or children.
+     */
     #next() {
         if (this.documents.length > 0) {
             return this.documents.shift();
         }
 
         this.equivalence_classes.push(this.root.equivalenceClass);
-        this.database.write_equivalence_class(this.root.equivalenceClass);
+        this.database.write_equivalence_class(this.root.equivalenceClass, this.equivalence_classes.length);
 
         if (this.root.children.length === 0) {
             this.root = null;
@@ -141,18 +175,31 @@ class Judgo {
         return this.#next();
     }
 
+    /**
+     * Handles the "greater than" comparison between the current root and the next node, and updates the state accordingly.
+     * @returns {Promise<void>}
+     */
     async greater_than() {
         await this.database.write_comparison(this.root, '>', this.next_node)
         this.root = this.root.greaterThan(this.next_node);
         this.next_node = this.#next();
     }
 
+    /**
+    * Handles the "equal" comparison between the current root and the next node, and updates the state accordingly.
+    * @returns {Promise<void>}
+    */
     async equal() {
         await this.database.write_comparison(this.root, '=', this.next_node)
         this.root = this.root.equal(this.next_node);
         this.next_node = this.#next();
     }
 
+
+    /**
+     * Handles the "less than" comparison between the current root and the next node, and updates the state accordingly.
+     * @returns {Promise<void>}
+     */
     async less_than() {
         await this.database.write_comparison(this.root, '<', this.next_node)
         this.root = this.root.lessThan(this.next_node);
@@ -161,11 +208,21 @@ class Judgo {
 }
 
 
+/**
+ * PBWrapper is a class that serves as a wrapper around PocketBase, providing functionality
+ * for handling and managing the state of a Judgo instance. It includes methods for reading and writing
+ * comparisons, equivalence classes, and the overall state of the Judgo process.
+ * 
+ * @example
+ * const pbWrapper = await PBWrapper.create(pocketbase, user_id);
+ * const judgo_instance = new Judgo(documents, pbWrapper);
+ */
 class PBWrapper {
     /**
      * Creates an instance of the class, initializing it with the given pocketbase and user_id.
      * @param {PocketBase} pocketbase - PocketBase JS Client.
-     * @param {string} user_id - The pocketbase user's identifier
+     * @param {string} user_id - The pocketbase user's identifier.
+     * @param {string} judgostate_id - The judgo state's identifier.
      */
     constructor(pocketbase, user_id, judgostate_id) {
         this.pocketbase = pocketbase;
@@ -175,6 +232,12 @@ class PBWrapper {
         this.call_count = 0;
     }
 
+    /**
+     * Asynchronously creates an instance of the PBWrapper class, handling error cases for the specified user.
+     * @param {PocketBase} pocketbase - PocketBase JS Client.
+     * @param {string} user_id - The pocketbase user's identifier.
+     * @returns {Promise<PBWrapper>} Returns a Promise resolving to a new PBWrapper instance.
+     */
     static async create(pocketbase, user_id) {
         const record = await pocketbase.collection('JudgoStates').getFirstListItem(`rater="${user_id}"`)
             .catch((error) => {
@@ -192,6 +255,7 @@ class PBWrapper {
      * @param {HeapNode} node1 - The first node to be compared.  
      * @param {'>'|'<'|'='} order - The order symbol representing the comparison to be made ('>', '<', or '=').
      * @param {HeapNode} node2 - The second node to be compared.
+     * @returns {Promise<boolean>} Returns a Promise resolving to a boolean indicating success or failure.
      */
     async write_comparison(node1, order, node2) {
 
@@ -231,7 +295,13 @@ class PBWrapper {
     }
 
 
-    async write_equivalence_class(equivalenceClass) {
+    /**
+     * Writes an equivalence class with its order.
+     * @param {string[]} equivalenceClass - An array of image_ids to be compared.
+     * @param {'>'|'<'|'='} order - The order symbol representing the comparison to be made ('>', '<', or '=').
+     * @returns {Promise<boolean>} Returns a Promise resolving to a boolean indicating success or failure.
+     */
+    async write_equivalence_class(equivalenceClass, order) {
 
         const nodes = await this.pocketbase.collection("Nodes").getFullList({
             filter: equivalenceClass.map((image_id) => `rater="${this.user_id}" && image_id="${image_id}" `).join("||"),
@@ -245,7 +315,8 @@ class PBWrapper {
 
         const data = {
             "rater": this.user_id,
-            "neighbours": nodes.map((node) => node.id)
+            "neighbours": nodes.map((node) => node.id),
+            "order": order
         };
 
         return await this.pocketbase.collection("EquivalenceClass").create(data).then(() => true).catch(() => false);
@@ -254,12 +325,17 @@ class PBWrapper {
     /**
      * Writes or handles the state of a judgo instance, typically converting it to a JSON string.
      * @param {Judgo} judgo_instance - The instance of the Judgo class or similar to be handled.
+     * @returns {Promise<boolean>} Returns a Promise resolving to a boolean indicating success or failure.
      */
     async write_state(judgo_instance) {
         const json_string = JSON.stringify(judgo_instance);
         return await this.pocketbase.collection('JudgoStates').update(this.judgostate_id, { "current_state": json_string }).then(() => true).catch(() => false);
     }
 
+    /**
+     * Reads the current state of a judgo instance.
+     * @returns {Promise<string|null>} Returns a Promise resolving to a JSON string representing the state, or null if not found.
+     */
     async read_state() {
         const record = await this.pocketbase.collection("JudgoStates").getOne(this.judgostate_id).catch(() => null);
         if (record == null) {
@@ -268,6 +344,10 @@ class PBWrapper {
         return record.current_state;
     }
 
+    /**
+     * Reads relations and constructs the equivalent classes and nodes (TBD).
+     * @returns {Promise<any|null>} Returns a Promise resolving to the extracted relations, or null if not found.
+     */
     async read_from_relations() {
         const eq_classes_record = await this.pocketbase.collection("EquivalenceClass").getFullList({ filter: `rater="${this.user_id}"`, expand: "neighbours", sort: '-created' }).catch(() => null);
         const nodes_record = await this.pocketbase.collection("Nodes").getFullList({ filter: `rater="${this.user_id}"`, expand: "parent" }).catch(() => null);
@@ -277,8 +357,6 @@ class PBWrapper {
         }
 
         const eq_classes = eq_classes_record.items.map(item => item.neighbours);
-
-
 
     }
 }
