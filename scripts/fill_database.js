@@ -17,18 +17,18 @@ function shuffle_array(array) {
 }
 
 
-// Probably needs to change? 
-function generate_pairs(array) {
+// // Probably needs to change? 
+// function generate_pairs(array) {
 
-    let pairs = [];
+//     let pairs = [];
 
-    for (let i = 1; i < array.length; i++) {
-        pairs.push([array[i - 1], array[i]])
-    }
+//     for (let i = 1; i < array.length; i++) {
+//         pairs.push([array[i - 1], array[i]])
+//     }
 
-    pairs.push([array[0], array[array.length - 1]])
-    return pairs;
-}
+//     pairs.push([array[0], array[array.length - 1]])
+//     return pairs;
+// }
 
 
 
@@ -36,13 +36,13 @@ function generate_pairs(array) {
 
 async function insert() {
 
-    const file = readFileSync("image_ids.json");
+    const file = readFileSync("small_vert_right_image_ids.json");
     const image_ids = JSON.parse(file);
 
     // add shuffle when sussed
-    let array = generate_pairs(image_ids)
+    let array = shuffle_array(image_ids)
 
-    await pb.collection('images').create({ pairs: array })
+    await pb.collection('image_list').create({ all_images_random: array })
 }
 
 

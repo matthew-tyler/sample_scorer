@@ -1,4 +1,5 @@
 // Testing judgo JS implementation
+import { error } from '@sveltejs/kit';
 import PocketBase from 'pocketbase'
 
 /**
@@ -103,9 +104,9 @@ class Judgo {
             this.documents = documents.map((document) => new HeapNode(document));
             this.root = this.#next();
             this.next_node = this.#next();
-            this.equivalence_classes = []
-            this.database = database;
         }
+        this.equivalence_classes = []
+        this.database = database;
     }
 
     /**
@@ -113,12 +114,12 @@ class Judgo {
      * @param {Object} object - The object to convert into a Judgo instance.
      * @returns {Judgo} Returns a new Judgo instance constructed from the object.
      */
-    static fromObject(object) {
-        const judgo = new Judgo([]);
+    static fromObject(object, database) {
+        const judgo = new Judgo([], database);
         judgo.documents = object.documents.map(document => HeapNode.fromObject(document));
-        judgo.root = HeapNode.fromObject(object.root);
-        judgo.next_node = HeapNode.fromObject(object.next_node);
-        judgo.equivalence_classes = object.equivalence_classes;
+        judgo.root = HeapNode.fromObject(object.root)
+        judgo.next_node = HeapNode.fromObject(object.next_node)
+        judgo.equivalence_classes = object.equivalence_classes
         return judgo;
     }
 
@@ -130,23 +131,50 @@ class Judgo {
     static async fromDatabase(database) {
         const judgo_obj = await database.read_state();
         if (judgo_obj !== null) {
-            return Judgo.fromObject(judgo_obj);
+            return Judgo.fromObject(judgo_obj, database);
         }
         return null;
     }
 
+    /**
+     * Returns a plain object version of the Judgo instance without the database property.
+     * @returns {Object} Returns a plain object version of the Judgo instance.
+     */
+    toObject() {
+        // Create a new object to hold the plain object version
+        const plainObject = {};
+
+        // Copy the necessary properties from the current instance
+        plainObject.documents = this.documents.map(document => document);
+        plainObject.root = this.root;
+        plainObject.next_node = this.next_node;
+        plainObject.equivalence_classes = [...this.equivalence_classes];
+
+        // Return the plain object version
+        return plainObject;
+    }
     /**
      * Compares this Judgo instance with another for equality.
      * @param {Judgo} otherJudgo - The other Judgo instance to compare.
      * @returns {boolean} Returns true if the Judgo instances are equal, false otherwise.
      */
     equals(otherJudgo) {
+        console.log(1);
         if (!otherJudgo || !(otherJudgo instanceof Judgo)) return false;
+        console.log(2);
         if (!this.root.equals(otherJudgo.root)) return false;
+        console.log(3);
         if (!this.next_node.equals(otherJudgo.next_node)) return false;
+        console.log(4);
         if (this.documents.length !== otherJudgo.documents.length) return false;
+        console.log(5);
         if (!this.documents.every((document, index) => document.equals(otherJudgo.documents[index]))) return false;
-        if (!this.equivalence_classes.every((value, index) => value === otherJudgo.equivalence_classes[index])) return false;
+        console.log(6);
+        if (!this.equivalence_classes.every((value, index) => {
+            const otherValue = otherJudgo.equivalence_classes[index];
+            return JSON.stringify(value) === JSON.stringify(otherValue);
+        })) return false;
+        console.log(7);
         return true;
     }
 
@@ -164,9 +192,9 @@ class Judgo {
         this.database.write_equivalence_class(this.root.equivalenceClass, this.equivalence_classes.length);
 
         if (this.root.children.length === 0) {
-            this.root = null;
+            this.root = new HeapNode('');
             console.log("No more documents or children");
-            return null;
+            return new HeapNode('');
         }
 
         this.documents = this.root.children;
@@ -183,6 +211,7 @@ class Judgo {
         await this.database.write_comparison(this.root, '>', this.next_node)
         this.root = this.root.greaterThan(this.next_node);
         this.next_node = this.#next();
+        await this.database.write_state(this.toObject());
     }
 
     /**
@@ -193,6 +222,7 @@ class Judgo {
         await this.database.write_comparison(this.root, '=', this.next_node)
         this.root = this.root.equal(this.next_node);
         this.next_node = this.#next();
+        await this.database.write_state(this.toObject());
     }
 
 
@@ -204,6 +234,7 @@ class Judgo {
         await this.database.write_comparison(this.root, '<', this.next_node)
         this.root = this.root.lessThan(this.next_node);
         this.next_node = this.#next();
+        await this.database.write_state(this.toObject());
     }
 }
 
@@ -329,7 +360,7 @@ class PBWrapper {
      */
     async write_state(judgo_instance) {
         const json_string = JSON.stringify(judgo_instance);
-        return await this.pocketbase.collection('JudgoStates').update(this.judgostate_id, { "current_state": json_string }).then(() => true).catch(() => false);
+        return await this.pocketbase.collection('JudgoStates').update(this.judgostate_id, { "current_state": json_string }).then(() => true).catch((error) => console.log(error));
     }
 
     /**
@@ -364,7 +395,7 @@ class PBWrapper {
 
 const pocketbase = new PocketBase("http://127.0.0.1:8090")
 
-let user_id = "sv1j6rwjx6hpwvg";
+let user_id = "vpn5tnoqev8za5e";
 
 const test_wrapper = await PBWrapper.create(pocketbase, user_id);
 
@@ -385,32 +416,4 @@ const test_array = ["d1", "d2", "d3", "d4"]
 
 const test_judgo = new Judgo(test_array, test_wrapper);
 
-await test_judgo.less_than()
-// demo()
-await test_judgo.less_than()
-// demo()
-await test_judgo.greater_than()
-// demo()
-await test_judgo.equal()
-// demo()
-
-// console.log(await test_wrapper.read_state());
-
-
-
-
-// let jsonString = JSON.stringify(test_judgo)
-// const plainObject = JSON.parse(jsonString);
-
-// const judgoInstance = Judgo.fromObject(plainObject);
-
-// console.log(test_judgo.equals(judgoInstance));
-
-
-// console.log(judgoInstance);
-// // console.log(test_judgo);
-
-// // console.log(test_judgo); // should be d2 at root
-// console.log(JSON.stringify(test_judgo.equivalence_classes));
-// // console.log(test_judgo);
 

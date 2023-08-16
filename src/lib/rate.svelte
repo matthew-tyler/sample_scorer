@@ -1,5 +1,22 @@
 <script>
-	import { pb, image_pairs } from '$lib/pocketbase';
+	import { pb, image_pairs, current_user } from '$lib/pocketbase';
+	import { Judgo, PBWrapper } from '$lib/judgo.js';
+	import { onMount } from 'svelte';
+
+	let comparison_algorithm;
+	onMount(async () => {
+		const dao = await PBWrapper.create(pb, $current_user.id);
+		const loadedAlgorithm = await Judgo.fromDatabase(dao);
+		const documents = await pb.collection('image_list').getOne($current_user.documents);
+
+		if (loadedAlgorithm === null) {
+			// If Judgo data doesn't exist in the database, create a new one
+			comparison_algorithm = new Judgo(documents.all_images_random, dao);
+		} else {
+			// Use the loaded Judgo data
+			comparison_algorithm = loadedAlgorithm;
+		}
+	});
 
 	const IMG1 = 0;
 	const IMG2 = 1;
@@ -7,20 +24,40 @@
 	let position = 0;
 	let score = null;
 
-	$: image1 = $image_pairs[position][0];
-	$: image2 = $image_pairs[position][1];
+	let image1 = '';
+	let image2 = '';
+
+	$: if (comparison_algorithm) {
+		image1 = comparison_algorithm.root.equivalenceClass[0];
+		image2 = comparison_algorithm.next_node.equivalenceClass[0];
+	}
 
 	const equal = () => {
 		score = 'similar';
 	};
 
-	const submit = () => {
+	const submit = async () => {
 		if (score === null) {
 			return;
 		}
+		switch (score) {
+			case IMG1:
+				await comparison_algorithm.greater_than();
+				break;
+			case 'similar':
+				await comparison_algorithm.equal();
+				break;
+			case IMG2:
+				await comparison_algorithm.less_than();
+				break;
+		}
+
+		image1 = comparison_algorithm.root.equivalenceClass[0];
+		image2 = comparison_algorithm.next_node.equivalenceClass[0];
 		score = null;
-		forward();
+		// forward();
 	};
+
 	const back = () => {
 		position = Math.max(position - 1, 0);
 	};
@@ -28,7 +65,7 @@
 		position = Math.min(position + 1, $image_pairs.length - 1);
 	};
 
-	const key_press = (e) => {
+	const key_press = async (e) => {
 		switch (e.key) {
 			case 'ArrowLeft':
 				score = IMG1;
@@ -40,7 +77,7 @@
 				score = 'similar';
 				break;
 			case 'Enter':
-				submit();
+				await submit();
 		}
 	};
 </script>
