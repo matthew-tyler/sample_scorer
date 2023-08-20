@@ -237,7 +237,7 @@ export class Judgo {
     }
 
     round_number() {
-        return this.equivalence_classes.length();
+        return this.equivalence_classes.length;
     }
 }
 
