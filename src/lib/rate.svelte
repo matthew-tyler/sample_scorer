@@ -27,9 +27,12 @@
 	let image1 = '';
 	let image2 = '';
 
+	let round_number = 0;
+
 	$: if (comparison_algorithm) {
 		image1 = comparison_algorithm.root.equivalenceClass[0];
 		image2 = comparison_algorithm.next_node.equivalenceClass[0];
+		round_number = comparison_algorithm.round_number();
 	}
 
 	const equal = () => {
@@ -81,6 +84,8 @@
 		}
 	};
 </script>
+
+<h2 class="absolute">Round {round_number}</h2>
 
 <div class="grid grid-cols-1 md:grid-cols-7 gap-6 items-center justify-items-center">
 	<!-- svelte-ignore a11y-click-events-have-key-events -->

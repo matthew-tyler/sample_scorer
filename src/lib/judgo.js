@@ -235,6 +235,10 @@ export class Judgo {
         this.next_node = this.#next();
         await this.database.write_state(this.toObject());
     }
+
+    round_number() {
+        return this.equivalence_classes.length();
+    }
 }
 
 
