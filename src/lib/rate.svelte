@@ -143,10 +143,8 @@
 	</div>
 </div>
 
-<nav class="flex justify-around items-center px-4 py-2 shadow-lg w-full">
-	<button class="btn" on:click={back}>Back</button>
-	<button class="btn" on:click={submit}>Submit</button>
-	<button class="btn" on:click={forward}>Forward</button>
+<nav class="flex justify-around items-center px-4 py-2 w-full">
+	<button class="btn variant-filled-surface" on:click={submit}>Submit</button>
 </nav>
 
 <svelte:window on:keydown={key_press} />
