@@ -1,27 +1,17 @@
 <script>
-	import { pb, image_pairs, current_user } from '$lib/pocketbase';
+	import { pb, current_user } from '$lib/pocketbase';
 	import { Judgo, PBWrapper } from '$lib/judgo.js';
 	import { onMount } from 'svelte';
 
 	let comparison_algorithm;
 	onMount(async () => {
-		const dao = await PBWrapper.create(pb, $current_user.id);
-		const loadedAlgorithm = await Judgo.fromDatabase(dao);
-		const documents = await pb.collection('image_list').getOne($current_user.documents);
-
-		if (loadedAlgorithm === null) {
-			// If Judgo data doesn't exist in the database, create a new one
-			comparison_algorithm = new Judgo(documents.all_images_random, dao);
-		} else {
-			// Use the loaded Judgo data
-			comparison_algorithm = loadedAlgorithm;
-		}
+		const dao = await PBWrapper.create(pb, $current_user.id, $current_user.documents);
+		dao.next_category();
+		const comparison_algorithm = await Judgo.fromDatabase(dao);
 	});
 
 	const IMG1 = 0;
 	const IMG2 = 1;
-
-	let position = 0;
 	let score = null;
 
 	let image1 = '';
@@ -58,14 +48,6 @@
 		image1 = comparison_algorithm.root.equivalenceClass[0];
 		image2 = comparison_algorithm.next_node.equivalenceClass[0];
 		score = null;
-		// forward();
-	};
-
-	const back = () => {
-		position = Math.max(position - 1, 0);
-	};
-	const forward = () => {
-		position = Math.min(position + 1, $image_pairs.length - 1);
 	};
 
 	const key_press = async (e) => {

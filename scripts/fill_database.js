@@ -17,32 +17,20 @@ function shuffle_array(array) {
 }
 
 
-// // Probably needs to change? 
-// function generate_pairs(array) {
-
-//     let pairs = [];
-
-//     for (let i = 1; i < array.length; i++) {
-//         pairs.push([array[i - 1], array[i]])
-//     }
-
-//     pairs.push([array[0], array[array.length - 1]])
-//     return pairs;
-// }
-
-
-
-
-
 async function insert() {
 
-    const file = readFileSync("small_vert_right_image_ids.json");
+    const file = readFileSync("Vertical_Small_Right_imgs.json");
     const image_ids = JSON.parse(file);
 
     // add shuffle when sussed
     let array = shuffle_array(image_ids)
 
-    await pb.collection('image_list').create({ all_images_random: array })
+    const data = {
+        "Title": "Vertical_Small_Right",
+        "image_ids": array
+    };
+
+    await pb.collection('image_lists').create(data)
 }
 
 

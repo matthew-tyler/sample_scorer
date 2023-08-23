@@ -158,22 +158,15 @@ export class Judgo {
      * @returns {boolean} Returns true if the Judgo instances are equal, false otherwise.
      */
     equals(otherJudgo) {
-        console.log(1);
         if (!otherJudgo || !(otherJudgo instanceof Judgo)) return false;
-        console.log(2);
         if (!this.root.equals(otherJudgo.root)) return false;
-        console.log(3);
         if (!this.next_node.equals(otherJudgo.next_node)) return false;
-        console.log(4);
         if (this.documents.length !== otherJudgo.documents.length) return false;
-        console.log(5);
         if (!this.documents.every((document, index) => document.equals(otherJudgo.documents[index]))) return false;
-        console.log(6);
         if (!this.equivalence_classes.every((value, index) => {
             const otherValue = otherJudgo.equivalence_classes[index];
             return JSON.stringify(value) === JSON.stringify(otherValue);
         })) return false;
-        console.log(7);
         return true;
     }
 
@@ -188,7 +181,6 @@ export class Judgo {
         }
 
         this.equivalence_classes.push(this.root.equivalenceClass);
-        this.database.write_equivalence_class(this.root.equivalenceClass, this.equivalence_classes.length);
 
         if (this.root.children.length === 0) {
             this.root = new HeapNode('');
@@ -207,7 +199,6 @@ export class Judgo {
      * @returns {Promise<void>}
      */
     async greater_than() {
-        await this.database.write_comparison(this.root, '>', this.next_node)
         this.root = this.root.greaterThan(this.next_node);
         this.next_node = this.#next();
         await this.database.write_state(this.toObject());
@@ -218,7 +209,6 @@ export class Judgo {
     * @returns {Promise<void>}
     */
     async equal() {
-        await this.database.write_comparison(this.root, '=', this.next_node)
         this.root = this.root.equal(this.next_node);
         this.next_node = this.#next();
         await this.database.write_state(this.toObject());
@@ -230,7 +220,6 @@ export class Judgo {
      * @returns {Promise<void>}
      */
     async less_than() {
-        await this.database.write_comparison(this.root, '<', this.next_node)
         this.root = this.root.lessThan(this.next_node);
         this.next_node = this.#next();
         await this.database.write_state(this.toObject());
@@ -258,12 +247,12 @@ export class PBWrapper {
      * @param {string} user_id - The pocketbase user's identifier.
      * @param {string} judgostate_id - The judgo state's identifier.
      */
-    constructor(pocketbase, user_id, judgostate_id) {
+    constructor(pocketbase, user_id, judgostate_id, documents) {
         this.pocketbase = pocketbase;
         this.pocketbase.autoCancellation(false);
         this.user_id = user_id;
         this.judgostate_id = judgostate_id;
-        this.call_count = 0;
+        this.documents = documents;
     }
 
     /**
@@ -272,88 +261,27 @@ export class PBWrapper {
      * @param {string} user_id - The pocketbase user's identifier.
      * @returns {Promise<PBWrapper>} Returns a Promise resolving to a new PBWrapper instance.
      */
-    static async create(pocketbase, user_id) {
-        const record = await pocketbase.collection('JudgoStates').getFirstListItem(`rater="${user_id}"`)
+    static async create(pocketbase, user_id, documents) {
+        const record = await pocketbase.collection('JudgoStates').getFirstListItem(`rater="${user_id}" && completed=false`)
             .catch((error) => {
                 if (error.status == 404) {
-                    return pocketbase.collection("JudgoStates").create({ "rater": user_id }).catch(() => null)
+                    return pocketbase.collection("JudgoStates").create({ "rater": user_id, "category": document[0] }).catch(() => null)
                 }
             });
-
         const judgostate_id = record.id
-        return new PBWrapper(pocketbase, user_id, judgostate_id);
+        return new PBWrapper(pocketbase, user_id, judgostate_id, documents);
     }
 
-    /**
-     * Writes or handles the comparison between two nodes based on the specified order.
-     * @param {HeapNode} node1 - The first node to be compared.  
-     * @param {'>'|'<'|'='} order - The order symbol representing the comparison to be made ('>', '<', or '=').
-     * @param {HeapNode} node2 - The second node to be compared.
-     * @returns {Promise<boolean>} Returns a Promise resolving to a boolean indicating success or failure.
-     */
-    async write_comparison(node1, order, node2) {
-
-        const node1_record = await this.pocketbase.collection("Nodes").getFirstListItem(`image_id="${node1.equivalenceClass[0]}"`)
-            .catch(async (error) => {
-                if (error.status == 404) {
-                    return await this.pocketbase.collection("Nodes").create({ "rater": `${this.user_id}`, "image_id": node1.equivalenceClass[0] }).catch(() => null)
-                }
-                return null
-            })
-
-        const node2_record = await this.pocketbase.collection("Nodes").getFirstListItem(`image_id="${node2.equivalenceClass[0]}"`)
-            .catch(async (error) => {
-                if (error.status == 404) {
-
-                    return await this.pocketbase.collection("Nodes").create({ "rater": `${this.user_id}`, "image_id": node2.equivalenceClass[0] }).catch(() => null)
-                }
-                return null;
-            })
-
-
-        if (node1_record == null || node2_record == null) {
-            return false;
-        }
-
-
-        switch (order) {
-            case '>':
-                return await this.pocketbase.collection("Nodes").update(node2_record.id, { "parent": node1_record.id }).then(() => true).catch(() => false);
-            case '<':
-                return await this.pocketbase.collection("Nodes").update(node1_record.id, { "parent": node2_record.id }).then(() => true).catch(() => false);
-            case '=':
-                return await this.pocketbase.collection("Nodes").update(node1_record.id, { "siblings": node2_record.id }).then(async () => {
-                    await this.pocketbase.collection("Nodes").update(node2_record.id, { "siblings": node1_record.id }).then(() => true).catch(() => false)
-                }).then((response) => response).catch(() => false);
-        }
-    }
-
-
-    /**
-     * Writes an equivalence class with its order.
-     * @param {string[]} equivalenceClass - An array of image_ids to be compared.
-     * @param {'>'|'<'|'='} order - The order symbol representing the comparison to be made ('>', '<', or '=').
-     * @returns {Promise<boolean>} Returns a Promise resolving to a boolean indicating success or failure.
-     */
-    async write_equivalence_class(equivalenceClass, order) {
-
-        const nodes = await this.pocketbase.collection("Nodes").getFullList({
-            filter: equivalenceClass.map((image_id) => `rater="${this.user_id}" && image_id="${image_id}" `).join("||"),
-            '$autoCancel': false
-        }).catch((error) => null) // At this point every image_id should have a corresponding node. I think....
-
-        if (nodes == null || nodes.length !== equivalenceClass.length) {
-            // we have a problem
-            return false;
-        }
-
-        const data = {
+    async next_category() {
+        const record = await this.pocketbase.collection('JudgoStates').getFullList({ filter: `rater='${this.user_id}'` })
+        const completed = record.map((record) => record.category)
+        const next = this.documents.find(doc => !completed.includes(doc));
+        const judgo_state = await this.pocketbase.collection('JudgoStates').create({
             "rater": this.user_id,
-            "neighbours": nodes.map((node) => node.id),
-            "order": order
-        };
+            "category": next,
+        });
 
-        return await this.pocketbase.collection("EquivalenceClass").create(data).then(() => true).catch(() => false);
+        console.log(judgo_state);
     }
 
     /**
@@ -378,19 +306,4 @@ export class PBWrapper {
         return record.current_state;
     }
 
-    /**
-     * Reads relations and constructs the equivalent classes and nodes (TBD).
-     * @returns {Promise<any|null>} Returns a Promise resolving to the extracted relations, or null if not found.
-     */
-    async read_from_relations() {
-        const eq_classes_record = await this.pocketbase.collection("EquivalenceClass").getFullList({ filter: `rater="${this.user_id}"`, expand: "neighbours", sort: '-created' }).catch(() => null);
-        const nodes_record = await this.pocketbase.collection("Nodes").getFullList({ filter: `rater="${this.user_id}"`, expand: "parent" }).catch(() => null);
-
-        if (eq_classes_record == null || nodes_record == null) {
-            return null;
-        }
-
-        const eq_classes = eq_classes_record.items.map(item => item.neighbours);
-
-    }
 }
