@@ -192,7 +192,6 @@ export class Judgo {
     }
 
     async #next_category() {
-        console.log("Inside top level next cat");
         await this.database.next_category();
         this.documents = this.database.documents.map((document) => new HeapNode(document));
         this.root = this.#next();
@@ -220,7 +219,6 @@ export class Judgo {
         this.root = this.root.equal(this.next_node);
         this.next_node = this.#next();
         if (this.next_node == null) {
-            console.log("Inside if");
             await this.#next_category();
         }
         await this.database.write_state(this.toObject());
@@ -297,8 +295,6 @@ export class PBWrapper {
         if (completed.length === 8) {
             return;
         }
-
-        console.log(user_record);
 
         const next = user_record.documents.find(doc => !completed.includes(doc));
 
