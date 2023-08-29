@@ -22,7 +22,7 @@
 		<!-- App Bar -->
 		<AppBar>
 			<svelte:fragment slot="lead">
-				<strong class="text-xl uppercase hidden lg:inline">
+				<strong class="text-xl uppercase lg:inline">
 					{#if $current_user}
 						<a href="/label">PairWisely</a>
 					{:else}

@@ -2,6 +2,8 @@
 	import { pb, current_user } from '$lib/pocketbase';
 	import { Judgo, PBWrapper } from '$lib/judgo.js';
 	import { onMount } from 'svelte';
+	import { scale } from 'svelte/transition';
+	import { elasticInOut } from 'svelte/easing';
 
 	let comparison_algorithm;
 	onMount(async () => {
@@ -21,7 +23,7 @@
 	$: if (comparison_algorithm) {
 		image1 = comparison_algorithm.root.equivalenceClass[0];
 		image2 = comparison_algorithm.next_node.equivalenceClass[0];
-		round_number = comparison_algorithm.round_number();
+		round_number = comparison_algorithm.round_number;
 	}
 
 	const equal = () => {
@@ -46,6 +48,7 @@
 
 		image1 = comparison_algorithm.root.equivalenceClass[0];
 		image2 = comparison_algorithm.next_node.equivalenceClass[0];
+		round_number = comparison_algorithm.round_number;
 		score = null;
 	};
 
@@ -65,8 +68,6 @@
 		}
 	};
 </script>
-
-<h2 class="absolute">Round {round_number}</h2>
 
 <div class="grid grid-cols-1 md:grid-cols-7 gap-6 items-center justify-items-center">
 	<!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -97,6 +98,14 @@
 
 	<div class="flex flex-col justify-center items-center p-4 md:col-span-1">
 		<button on:click={equal} class="btn-icon btn-icon-xl variant-filled">=</button>
+		{#key round_number}
+			<h2
+				class="absolute mr-56 text-center lg:mr-0 lg:mt-56"
+				transition:scale={{ start: 5, duration: 400 }}
+			>
+				Round {round_number}
+			</h2>
+		{/key}
 	</div>
 
 	<!-- svelte-ignore a11y-click-events-have-key-events -->

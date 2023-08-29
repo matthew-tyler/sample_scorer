@@ -105,6 +105,7 @@ export class Judgo {
         }
         this.equivalence_classes = []
         this.database = database;
+        this.round_number = 1;
     }
 
     /**
@@ -118,6 +119,7 @@ export class Judgo {
         judgo.root = HeapNode.fromObject(object.root)
         judgo.next_node = HeapNode.fromObject(object.next_node)
         judgo.equivalence_classes = object.equivalence_classes
+        judgo.round_number = object.equivalence_classes.length;
         return judgo;
     }
 
@@ -180,6 +182,7 @@ export class Judgo {
         }
 
         this.equivalence_classes.push(this.root.equivalenceClass);
+        this.round_number = this.equivalence_classes.length;
 
         if (this.root.children.length === 0) {
             return null;
@@ -236,10 +239,6 @@ export class Judgo {
             await this.#next_category();
         }
         await this.database.write_state(this.toObject());
-    }
-
-    round_number() {
-        return this.equivalence_classes.length;
     }
 }
 
