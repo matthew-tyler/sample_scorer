@@ -131,8 +131,7 @@ export class Judgo {
         if (judgo_obj !== null) {
             return Judgo.fromObject(judgo_obj, database);
         }
-
-        return null;
+        return new Judgo(database.documents, database);
     }
 
     /**
@@ -183,15 +182,21 @@ export class Judgo {
         this.equivalence_classes.push(this.root.equivalenceClass);
 
         if (this.root.children.length === 0) {
-            this.root = new HeapNode('');
-            console.log("No more documents or children");
-            return new HeapNode('');
+            return null;
         }
 
         this.documents = this.root.children;
         this.root = this.#next();
 
         return this.#next();
+    }
+
+    async #next_category() {
+        console.log("Inside top level next cat");
+        await this.database.next_category();
+        this.documents = this.database.documents.map((document) => new HeapNode(document));
+        this.root = this.#next();
+        this.next_node = this.#next();
     }
 
     /**
@@ -201,6 +206,9 @@ export class Judgo {
     async greater_than() {
         this.root = this.root.greaterThan(this.next_node);
         this.next_node = this.#next();
+        if (this.next_node.value === null) {
+            await this.#next_category();
+        }
         await this.database.write_state(this.toObject());
     }
 
@@ -211,6 +219,10 @@ export class Judgo {
     async equal() {
         this.root = this.root.equal(this.next_node);
         this.next_node = this.#next();
+        if (this.next_node == null) {
+            console.log("Inside if");
+            await this.#next_category();
+        }
         await this.database.write_state(this.toObject());
     }
 
@@ -222,6 +234,9 @@ export class Judgo {
     async less_than() {
         this.root = this.root.lessThan(this.next_node);
         this.next_node = this.#next();
+        if (this.next_node.value === null) {
+            await this.#next_category();
+        }
         await this.database.write_state(this.toObject());
     }
 
@@ -261,27 +276,41 @@ export class PBWrapper {
      * @param {string} user_id - The pocketbase user's identifier.
      * @returns {Promise<PBWrapper>} Returns a Promise resolving to a new PBWrapper instance.
      */
-    static async create(pocketbase, user_id, documents) {
+    static async create(pocketbase, user_id, image_lists) {
         const record = await pocketbase.collection('JudgoStates').getFirstListItem(`rater="${user_id}" && completed=false`)
             .catch((error) => {
                 if (error.status == 404) {
-                    return pocketbase.collection("JudgoStates").create({ "rater": user_id, "category": document[0] }).catch(() => null)
+                    return pocketbase.collection("JudgoStates").create({ "rater": user_id, "category": image_lists[0] }).catch(() => null)
                 }
             });
         const judgostate_id = record.id
-        return new PBWrapper(pocketbase, user_id, judgostate_id, documents);
+        const docs = await pocketbase.collection('image_lists').getOne(image_lists[0]);
+        return new PBWrapper(pocketbase, user_id, judgostate_id, docs.image_ids);
     }
 
     async next_category() {
+        await this.pocketbase.collection('JudgoStates').update(this.judgostate_id, { "completed": true });
         const record = await this.pocketbase.collection('JudgoStates').getFullList({ filter: `rater='${this.user_id}'` })
+        const user_record = await this.pocketbase.collection('users').getOne(this.user_id, { expand: this.documents })
         const completed = record.map((record) => record.category)
-        const next = this.documents.find(doc => !completed.includes(doc));
+
+        if (completed.length === 8) {
+            return;
+        }
+
+        console.log(user_record);
+
+        const next = user_record.documents.find(doc => !completed.includes(doc));
+
         const judgo_state = await this.pocketbase.collection('JudgoStates').create({
             "rater": this.user_id,
             "category": next,
-        });
+        }).catch((err) => console.log(err));
 
-        console.log(judgo_state);
+        const docs = await this.pocketbase.collection('image_lists').getOne(next).catch(error => console.log(error));
+
+        this.judgostate_id = judgo_state.id;
+        this.documents = docs.image_ids;
     }
 
     /**

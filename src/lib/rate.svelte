@@ -6,8 +6,7 @@
 	let comparison_algorithm;
 	onMount(async () => {
 		const dao = await PBWrapper.create(pb, $current_user.id, $current_user.documents);
-		dao.next_category();
-		const comparison_algorithm = await Judgo.fromDatabase(dao);
+		comparison_algorithm = await Judgo.fromDatabase(dao);
 	});
 
 	const IMG1 = 0;
