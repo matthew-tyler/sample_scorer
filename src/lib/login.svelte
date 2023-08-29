@@ -18,10 +18,18 @@
 	}
 </script>
 
-<div class="input-group input-group-divider grid-cols-[auto_1fr_auto]">
-	<input bind:value={user_code} class="input" type="text" title="input id" placeholder="input ID" />
-	<button type="button" class="btn variant-filled" on:click={login}>Login</button>
-</div>
+<form on:submit|preventDefault={login}>
+	<div class="input-group input-group-divider grid-cols-[auto_1fr_auto]">
+		<input
+			bind:value={user_code}
+			class="input"
+			type="text"
+			title="input id"
+			placeholder="input ID"
+		/>
+		<button type="button" class="btn variant-filled" on:click={login}>Login</button>
+	</div>
+</form>
 
 {#if error}
 	<div class="fixed inset-x-0 bottom-1/4 flex justify-center items-center">
