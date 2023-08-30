@@ -3,7 +3,6 @@
 	import { Judgo, PBWrapper } from '$lib/judgo.js';
 	import { onMount } from 'svelte';
 	import { scale } from 'svelte/transition';
-	import { elasticInOut } from 'svelte/easing';
 
 	let comparison_algorithm;
 	onMount(async () => {
