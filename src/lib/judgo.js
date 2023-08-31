@@ -199,6 +199,8 @@ export class Judgo {
         this.documents = this.database.documents.map((document) => new HeapNode(document));
         this.root = this.#next();
         this.next_node = this.#next();
+
+        this.equivalence_classes = [];
     }
 
     /**
@@ -208,7 +210,7 @@ export class Judgo {
     async greater_than() {
         this.root = this.root.greaterThan(this.next_node);
         this.next_node = this.#next();
-        if (this.next_node.value === null) {
+        if (this.next_node == null) {
             await this.#next_category();
         }
         await this.database.write_state(this.toObject());
@@ -235,7 +237,7 @@ export class Judgo {
     async less_than() {
         this.root = this.root.lessThan(this.next_node);
         this.next_node = this.#next();
-        if (this.next_node.value === null) {
+        if (this.next_node == null) {
             await this.#next_category();
         }
         await this.database.write_state(this.toObject());
@@ -292,6 +294,8 @@ export class PBWrapper {
         const completed = record.map((record) => record.category)
 
         if (completed.length === 8) {
+            this.judgostate_id = '';
+            this.documents = ["game", "over"];
             return;
         }
 
