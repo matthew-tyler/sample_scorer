@@ -288,18 +288,22 @@ export class PBWrapper {
     }
 
     async next_category() {
+        if (!this.judgostate_id) {
+            return;
+        }
         await this.pocketbase.collection('JudgoStates').update(this.judgostate_id, { "completed": true });
         const record = await this.pocketbase.collection('JudgoStates').getFullList({ filter: `rater='${this.user_id}'` })
-        const user_record = await this.pocketbase.collection('users').getOne(this.user_id, { expand: this.documents })
+        const user_record = await this.pocketbase.collection('users').getOne(this.user_id, { expand: this.documents }).catch(err => console.log(err))
         const completed = record.map((record) => record.category)
 
-        if (completed.length === 8) {
+        if (completed.length >= 8) {
             this.judgostate_id = '';
             this.documents = ["game", "over"];
             return;
         }
 
-        const next = user_record.documents.find(doc => !completed.includes(doc));
+
+        const next = user_record.documents.find(doc => !completed.includes(doc))
 
         const judgo_state = await this.pocketbase.collection('JudgoStates').create({
             "rater": this.user_id,
@@ -318,6 +322,9 @@ export class PBWrapper {
      * @returns {Promise<boolean>} Returns a Promise resolving to a boolean indicating success or failure.
      */
     async write_state(judgo_instance) {
+        if (!this.judgostate_id) {
+            return;
+        }
         const json_string = JSON.stringify(judgo_instance);
         return await this.pocketbase.collection('JudgoStates').update(this.judgostate_id, { "current_state": json_string }).then(() => true).catch((error) => console.log(error));
     }

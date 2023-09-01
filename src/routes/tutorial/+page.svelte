@@ -1,6 +1,8 @@
 <script>
+	import { goto } from '$app/navigation';
 	import { Stepper, Step } from '@skeletonlabs/skeleton';
 	import { scale } from 'svelte/transition';
+	import { pb, current_user } from '$lib/pocketbase';
 
 	let round_number = 1;
 
@@ -14,10 +16,15 @@
 		img1 = imgs[round_number - 1];
 		img2 = imgs[round_number - 1 + 2];
 	}, 1500);
+
+	async function done(event) {
+		await pb.collection('users').update($current_user.id, { completed_tutorial: true });
+		goto('/label');
+	}
 </script>
 
 <div class="container h-full mx-auto grid place-items-center">
-	<Stepper>
+	<Stepper on:complete={done}>
 		<Step>
 			<svelte:fragment slot="header">Hello there!</svelte:fragment>
 			<pre>
@@ -62,6 +69,7 @@
 
 
 
+
             </pre>
 		</Step>
 
@@ -97,7 +105,8 @@
                 You can choose what you think is clearest by clicking on it. 
                 Alternatively you can use the left and right keys to select.
 
-                Whichever one you choose will turn green, the other will turn red.        
+                Whichever one you choose will turn green, the other will turn red. 
+
             </pre>
 		</Step>
 
@@ -134,6 +143,7 @@
                 Or use the up arrow key on the keyboard.
 
                 If you've selected similar they'll turn blue.        
+
             </pre>
 		</Step>
 
@@ -170,6 +180,7 @@
                 Or use the up enter key on the keyboard.
 
                        
+
             </pre>
 		</Step>
 
@@ -204,6 +215,7 @@
 			<pre>
                 The "Best" as chosen by you will be placed on the left. 
                 A new image will appear on the right. 
+
 
                        
             </pre>
@@ -249,11 +261,12 @@
                 The images on both the left and the right will change.
 
                 Sometimes the rounds will start again, this is when you've reached another category.
+				There are 8 categories, but the number of rounds is determined by your choices.
             </pre>
 		</Step>
 
 		<Step>
-			<svelte:fragment slot="header">New Round</svelte:fragment>
+			<svelte:fragment slot="header">Game Over Man</svelte:fragment>
 			<div class="grid grid-cols-1 md:grid-cols-7 gap-6 items-center justify-items-center">
 				<!-- svelte-ignore a11y-click-events-have-key-events -->
 				<div
@@ -285,6 +298,7 @@
                 And that's all there is to it!
 
                 
+
             </pre>
 		</Step>
 	</Stepper>
