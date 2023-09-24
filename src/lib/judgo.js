@@ -185,6 +185,7 @@ export class Judgo {
         this.round_number = this.equivalence_classes.length;
 
         if (this.root.children.length === 0) {
+            this.round_number = 0;
             return null;
         }
 
@@ -210,10 +211,11 @@ export class Judgo {
     async greater_than() {
         this.root = this.root.greaterThan(this.next_node);
         this.next_node = this.#next();
+        await this.database.write_state(this.toObject());
+
         if (this.next_node == null) {
             await this.#next_category();
         }
-        await this.database.write_state(this.toObject());
     }
 
     /**
@@ -223,10 +225,11 @@ export class Judgo {
     async equal() {
         this.root = this.root.equal(this.next_node);
         this.next_node = this.#next();
+        await this.database.write_state(this.toObject());
+
         if (this.next_node == null) {
             await this.#next_category();
         }
-        await this.database.write_state(this.toObject());
     }
 
 
@@ -237,10 +240,11 @@ export class Judgo {
     async less_than() {
         this.root = this.root.lessThan(this.next_node);
         this.next_node = this.#next();
+        await this.database.write_state(this.toObject());
+
         if (this.next_node == null) {
             await this.#next_category();
         }
-        await this.database.write_state(this.toObject());
     }
 }
 
