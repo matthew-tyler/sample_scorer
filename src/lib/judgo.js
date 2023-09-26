@@ -105,7 +105,7 @@ export class Judgo {
         }
         this.equivalence_classes = []
         this.database = database;
-        this.round_number = 1;
+        this.round_number = 0;
     }
 
     /**

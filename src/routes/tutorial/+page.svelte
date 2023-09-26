@@ -4,7 +4,7 @@
 	import { scale } from 'svelte/transition';
 	import { pb, current_user } from '$lib/pocketbase';
 
-	let round_number = 1;
+	let round_number = 0;
 
 	$: img1 = 'wise2';
 	$: img2 = 'wise5';
