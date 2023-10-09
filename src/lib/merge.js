@@ -82,18 +82,29 @@ class HeapNode {
 
 
 class Merge {
-
-    constructor(documents, database) {
-        // needs to use an array of our category lists
-        // Sorts by length from longest to shortest. 
+    // document_lists = [[uuid,uuid],[uuid,uuid]]
+    constructor(document_lists, database) {
+        // needs to use an array of category lists
+        // init document_lists:
+        //      Sort by length from longest to shortest.
+        //      condense each list of documents by some number, 
+        //      grouping each eq class by that num.
+        //      
         // Picks the longest as the main list to sort into.
         // Then sets an upper bound and a lower bound
-        // Takes the top element off of the in list and binary sort into the list
+        // Takes the top element off of the sort list and binary sort into the main list
+        // Update the upper bound with new upper bound
         // Sets new upper bound. 
-        // Takes the smallest element off of the in list and binary sort into the list. 
+        // Takes the bottom element off of the sort list and binary sort into the main list. 
+        // Sets new lower bound
         // Repeat until sorted in and apply to next list etc. 
+
 
     }
 
+    static fromObject() { }
+    toObject() { }
+
+    equals() { }
 
 }
