@@ -84,6 +84,13 @@ class HeapNode {
 class Merge {
 
     // document_lists = [[uuid,uuid],[uuid,uuid]]
+
+    /**
+     * 
+     * @param {[[]]} document_lists 
+     * @param {number} group_by 
+     * @param {Object} database 
+     */
     constructor(document_lists, group_by = 1, database) {
         // needs to use an array of category lists
         // init document_lists:     
@@ -102,8 +109,18 @@ class Merge {
         this.sort_list = document_lists.pop();
 
         // Then sets an upper bound and a lower bound
-        this.upper_bound = this.main_list.length - 1;
-        this.lower_bound = 0;
+        this.global_upper_bound = this.main_list.length - 1;
+        this.global_lower_bound = 0;
+
+        this.upper = this.global_upper_bound;
+        this.lower = this.global_lower_bound;
+
+        this.comparison_index = this.#middle_index(this.upper, this.lower);
+        this.mode = "TOP";
+
+        this.current_comparison_element = this.main_list[this.comparison_index]
+        this.current_sort_element = this.sort_list.shift();
+
     }
 
     static fromObject() { }
@@ -111,26 +128,37 @@ class Merge {
     equals() { }
 
     #next() {
+
+        this.comparison_index = this.#middle_index(this.upper, this.lower)
+        this.current_comparison_element = this.main_list[this.comparison_index]
+
         // Takes the top element off of the sort list and binary sort into the main list
         // This sets a new upper bound that we can't go above.
         // Update the upper bound with new upper bound
-
-        // binary sort:
-        //      compare against middle element.
-        //      if main_list[middle] 'equal' target  then position = middle
-        //      if main_list[middle]  < target  then lower_bound = middle + 1;
-        //      if main_list[middle]  > target  then upper_bound = middle -1;
-        //      
-        //      if upper_bound < lower_bound  then target is smallest element
-        //      if lower_bound >= main_list.length  then target is largest element
-        //      if 
         //          
         // Takes the bottom element off of the sort list and binary sort into the main list. 
         // Sets new lower bound that we can no longer go below. 
         // Repeat until sorted in and apply to next list etc. 
     }
 
-    #middle_index() { return Math.floor((this.lower_bound + this.upper_bound) / 2) }
+    #middle_index(high, low) { return Math.floor((high + low) / 2) }
+
+
+    async greater_than() { }
+
+    async equal() {
+        this.main_list[this.comparison_index].equal(this.current_sort_element);
+        if (this.mode === "TOP") {
+            this.global_upper_bound = this.comparison_index;
+        } else {
+            this.global_lower_bound = this.comparison_index;
+        }
+
+
+        this.mode = "BOT"
+    }
+
+    async less_than() { }
 }
 
 
