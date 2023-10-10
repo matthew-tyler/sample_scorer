@@ -18,12 +18,11 @@ class Merge {
         this.document_lists = document_lists.reduce((acc, _, i, arr) => i % group_by === 0 ? [...acc, arr.slice(i, i + group_by).flat()] : acc, [])
             .sort((a, b) => a.length - b.length)
 
-        //      
         // Picks the longest as the main list to sort into.
-        this.main_list = document_lists.pop();
+        this.main_list = this.document_lists.pop();
 
         // Takes the next largest as the sort list
-        this.sort_list = document_lists.pop();
+        this.sort_list = this.document_lists.pop();
 
 
         this.current_upper = this.main_list.length - 1;
@@ -37,6 +36,8 @@ class Merge {
 
         this.current_sort_element = this.sort_list.shift();
         this.current_comparison_element = this.main_list[this.middle]
+
+        this.over = false;
 
     }
 
@@ -95,10 +96,10 @@ class Merge {
     #next() {
         this.middle = this.#middle_index()
         this.current_comparison_element = this.main_list[this.middle]
-
     }
 
     #next_sort_element() {
+
         if (this.sort_list.length === 0 && this.document_lists.length !== 0) {
             this.sort_list = this.document_lists.pop();
             this.current_upper = this.main_list.length - 1;
@@ -106,6 +107,7 @@ class Merge {
         }
 
         if (this.sort_list.length !== 0) {
+
             if (this.mode === "TOP") {
                 this.current_sort_element = this.sort_list.pop();
                 this.mode = "BOT";
@@ -119,10 +121,11 @@ class Merge {
             this.current_comparison_element = this.main_list[this.middle];
         } else {
             console.log("GAME OVER MAN");
+            this.over = true;
         }
     }
 
-    #middle_index() { return Math.floor((this.upper + this.lower) / 2) }
+    #middle_index() { return Math.floor((this.current_upper + this.current_lower) / 2) }
 
 
     async greater_than() {
@@ -132,9 +135,10 @@ class Merge {
             this.main_list.splice(this.current_lower, 0, this.current_sort_element);
 
             if (this.mode === "TOP") {
-                this.list_upper = this.current_lower + 1;
+
+                this.list_lower = this.current_lower + 1;
             } else {
-                this.list_lower = this.current_lower - 1;
+                this.list_upper = this.current_lower - 1;
             }
 
             this.#next_sort_element();
@@ -149,9 +153,9 @@ class Merge {
         this.main_list[this.middle] = [...this.main_list[this.middle], ...this.current_sort_element];
 
         if (this.mode === "TOP") {
-            this.list_upper = this.middle + 1;
+            this.list_lower = this.middle + 1;
         } else {
-            this.list_lower = this.middle - 1;
+            this.list_upper = this.middle - 1;
         }
 
         this.#next_sort_element();
@@ -164,9 +168,9 @@ class Merge {
             this.main_list.splice(this.current_lower, 0, this.current_sort_element);
 
             if (this.mode === "TOP") {
-                this.list_upper = this.current_lower + 1;
+                this.list_lower = this.current_lower + 1;
             } else {
-                this.list_lower = this.current_lower - 1;
+                this.list_upper = this.current_lower - 1;
             }
 
             this.#next_sort_element();
@@ -179,20 +183,64 @@ class Merge {
 }
 
 
-let list1 = [[1], [2, 2], [3, 3, 3], [4, 4, 4, 4], [5, 5, 5, 5, 5]]
-let list2 = [['a'], ['b'], ['c'], ['d'], ['e']]
-
-let n = 2
-
-list1 = list1.reduce((acc, _, i, arr) => i % n === 0 ? [...acc, arr.slice(i, i + n).flat()] : acc, []).sort((a, b) => b.length - a.length);
-
-
-
-let low = 4;
-let high = 4;
-
-let middle = Math.floor((low + high) / 2)
-
-console.log(middle);
+function* range(low, high) {
+    while (low <= high) {
+        yield [low];
+        low++;
+    }
+}
 
 
+let arr1 = [...range(1, 100)].sort((a, b) => b - a)
+let arr2 = [...range(23, 150)].sort((a, b) => b - a)
+
+let doc_list = [arr1, arr2]
+
+
+
+let test_merge = new Merge(doc_list)
+
+
+while (!test_merge.over) {
+
+    if (test_merge.current_sort_element[0] === test_merge.current_comparison_element[0]) {
+        test_merge.equal()
+    } else if (test_merge.current_sort_element[0] >= test_merge.current_comparison_element[0]) {
+        test_merge.greater_than();
+    } else if (test_merge.current_sort_element[0] <= test_merge.current_comparison_element[0]) {
+        test_merge.less_than();
+    }
+}
+
+// console.log(test_merge);
+
+
+let main_list = test_merge.main_list
+
+
+let prev_num = undefined;
+
+for (let arr of main_list) {
+
+    if (!(arr.every(val => val === arr[0]))) {
+        console.log("ERROR");
+        break;
+    }
+
+    if (prev_num === undefined) {
+        prev_num = arr[0]
+        continue;
+    }
+
+    if (prev_num < arr[0]) {
+        console.log("ERROR");
+        break;
+    }
+
+    prev_num = arr[0]
+
+}
+
+console.log("SUCCES?");
+
+// console.log(main_list);
