@@ -242,7 +242,7 @@ export class Merge {
     // Needs to account for hte current sort element 
     #is_all_determined() {
         if (this.list_lower === this.list_upper) {
-            this.main_list.splice(this.current_lower, 0, ...this.sort_list);
+            this.main_list.splice(this.list_lower, 0, ...this.sort_list);
             this.over = true;
         }
 
