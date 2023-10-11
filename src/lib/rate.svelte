@@ -1,13 +1,22 @@
 <script>
 	import { pb, current_user } from '$lib/pocketbase';
 	import { Judgo, PBWrapper } from '$lib/judgo.js';
+	import { Merge, PBMergeWrapper } from '$lib/merge.js';
 	import { onMount } from 'svelte';
 	import { scale } from 'svelte/transition';
 
 	let comparison_algorithm;
+
+	export let algo = 'Judgo';
+
 	onMount(async () => {
-		const dao = await PBWrapper.create(pb, $current_user.id, $current_user.documents);
-		comparison_algorithm = await Judgo.fromDatabase(dao);
+		if (algo === 'merge') {
+			const dao = await PBMergeWrapper.create(pb, $current_user.id);
+			comparison_algorithm = await Merge.fromDatabase(dao);
+		} else {
+			const dao = await PBWrapper.create(pb, $current_user.id, $current_user.documents);
+			comparison_algorithm = await Judgo.fromDatabase(dao);
+		}
 	});
 
 	const IMG1 = 0;
@@ -20,9 +29,14 @@
 	let round_number = 0;
 
 	$: if (comparison_algorithm) {
-		image1 = comparison_algorithm.root.equivalenceClass[0];
-		image2 = comparison_algorithm.next_node.equivalenceClass[0];
-		round_number = comparison_algorithm.round_number;
+		if (algo === 'merge') {
+			image1 = comparison_algorithm.current_sort_element[0];
+			image2 = comparison_algorithm.current_comparison_element[0];
+		} else {
+			image1 = comparison_algorithm.root.equivalenceClass[0];
+			image2 = comparison_algorithm.next_node.equivalenceClass[0];
+			round_number = comparison_algorithm.round_number;
+		}
 	}
 
 	const equal = () => {
@@ -44,10 +58,14 @@
 				await comparison_algorithm.less_than();
 				break;
 		}
-
-		image1 = comparison_algorithm.root.equivalenceClass[0];
-		image2 = comparison_algorithm.next_node.equivalenceClass[0];
-		round_number = comparison_algorithm.round_number;
+		if (algo === 'merge') {
+			image1 = comparison_algorithm.current_sort_element[0];
+			image2 = comparison_algorithm.current_comparison_element[0];
+		} else {
+			image1 = comparison_algorithm.root.equivalenceClass[0];
+			image2 = comparison_algorithm.next_node.equivalenceClass[0];
+			round_number = comparison_algorithm.round_number;
+		}
 		score = null;
 	};
 
