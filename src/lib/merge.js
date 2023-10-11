@@ -1,4 +1,4 @@
-
+import PocketBase from 'pocketbase'
 
 /**
  * A class to merge multiple lists of documents.
@@ -6,7 +6,7 @@
  * 
  * @class Merge
  */
-class Merge {
+export class Merge {
 
     // document_lists = [[[uuid,uuid],[uuid,uuid]], [[uuid,uuid],[uuid,uuid]]]
 
@@ -14,15 +14,21 @@ class Merge {
      * Constructor for the Merge class.
      * 
      * @param {Array<Array<Array<string>>>} document_lists - An array of lists, where each list contains document UUIDs.
-     * @param {number} [group_by=1] - The number of lists to group together and flatten in a single step.
      * @param {Object} database - Reference to the database object.
+     * @param {number} [group_by=1] - The number of lists to group together and flatten in a single step.
      */
-    constructor(document_lists, group_by = 1, database) {
+    constructor(document_lists, database, group_by = 1) {
         // needs to use an array of category lists
         // init document_lists:     
         //      condense each list of documents by some number,
         //      Sort by length from shortest to longest.
         //      grouping each eq class by that num.
+
+        this.database = database;
+        if (document_lists.length == 0) {
+            return;
+        }
+
         this.document_lists = document_lists.reduce((acc, _, i, arr) => i % group_by === 0 ? [...acc, arr.slice(i, i + group_by).flat()] : acc, [])
             .sort((a, b) => a.length - b.length)
 
@@ -45,8 +51,7 @@ class Merge {
         this.current_sort_element = this.sort_list.shift();
         this.current_comparison_element = this.main_list[this.middle]
 
-        this.over = false;
-
+        this.over = false
     }
 
     /**
@@ -70,11 +75,12 @@ class Merge {
      * 
      * @returns {Merge} A new instance of the Merge class populated with the properties from the provided object.
      */
-    static fromObject(obj) {
+    static fromObject(obj, database) {
         // Create a new instance
-        let mergeInstance = new Merge(obj.document_lists, undefined, undefined);  // Assuming the second and third arguments aren't required, or available from the object.
+        let mergeInstance = new Merge([], database, undefined);  // Assuming the second and third arguments aren't required, or available from the object.
 
         // Populate the instance's properties from the object
+        mergeInstance.document_lists = obj.document_lists
         mergeInstance.main_list = obj.main_list;
         mergeInstance.sort_list = obj.sort_list;
         mergeInstance.current_upper = obj.current_upper;
@@ -88,6 +94,15 @@ class Merge {
         // ... set any other properties needed
 
         return mergeInstance;
+    }
+
+    static async fromDatabase(database) {
+
+        const merge_obj = await database.read_state();
+        if (merge_obj !== null) {
+            return Merge.fromObject(merge_obj, database)
+        }
+        return new Merge(database.document_lists, database)
     }
 
     /**
@@ -214,6 +229,25 @@ class Merge {
     #middle_index() { return Math.floor((this.current_upper + this.current_lower) / 2) }
 
 
+    async #is_game_over() {
+        if (this.over) {
+            await this.database.mark_completed();
+            this.current_sort_element = [["game"]]
+            this.current_comparison_element = [["over"]]
+        }
+
+    }
+
+    // if list upper and lower == then all remaining elements are shoved in there
+    // Needs to account for hte current sort element 
+    #is_all_determined() {
+        if (this.list_lower === this.list_upper) {
+            this.main_list.splice(this.current_lower, 0, ...this.sort_list);
+            this.over = true;
+        }
+
+    }
+
     /**
      * Updates the state after determining that the current sort element is greater than the comparison element.
      * 
@@ -225,6 +259,11 @@ class Merge {
      * @async
      */
     async greater_than() {
+
+        if (this.over) {
+            return;
+        }
+
         this.current_upper = this.middle - 1;
 
         if (this.current_upper < this.current_lower) {
@@ -241,6 +280,13 @@ class Merge {
         } else {
             this.#next();
         }
+
+
+        this.#is_all_determined();
+
+        await this.database.write_state(this.toObject());
+        await this.#is_game_over();
+
     }
 
 
@@ -254,7 +300,9 @@ class Merge {
      * @async
      */
     async equal() {
-
+        if (this.over) {
+            return;
+        }
         this.main_list[this.middle] = [...this.main_list[this.middle], ...this.current_sort_element];
 
         if (this.mode === "TOP") {
@@ -264,6 +312,10 @@ class Merge {
         }
 
         this.#next_sort_element();
+
+        this.#is_all_determined();
+        await this.database.write_state(this.toObject());
+        await this.#is_game_over();
     }
 
     /**
@@ -277,6 +329,10 @@ class Merge {
      * @async
      */
     async less_than() {
+
+        if (this.over) {
+            return;
+        }
         this.current_lower = this.middle + 1;
 
         if (this.current_lower > this.current_upper) {
@@ -292,68 +348,164 @@ class Merge {
         } else {
             this.#next();
         }
+
+        this.#is_all_determined();
+        await this.database.write_state(this.toObject());
+        await this.#is_game_over();
+    }
+
+
+}
+
+export class PBMergeWrapper {
+
+    constructor(pocketbase, user_id, merge_id, document_lists) {
+        this.pocketbase = pocketbase;
+        this.pocketbase.autoCancellation(false);
+        this.user_id = user_id;
+        this.merge_id = merge_id;
+        this.document_lists = document_lists;
+    }
+
+    static async create(pocketbase, user_id) {
+
+        const record = await pocketbase.collection("MergeStates").getFirstListItem(`rater="${user_id}" && completed=false`)
+            .catch((error) => {
+                if (error.status == 404) {
+                    return pocketbase.collection("MergeStates").create({ "rater": user_id }).catch(() => null);
+                }
+            });
+        const merge_id = record.id
+
+        const records = await pocketbase.collection("JudgoStates").getFullList({ filter: `rater="${user_id}" && completed=true` })
+
+        const document_lists = []
+
+        records.forEach((record) => {
+            let classes = record.current_state.equivalence_classes;
+            document_lists.push(classes)
+        })
+
+        console.log(user_id);
+
+        return new PBMergeWrapper(pocketbase, user_id, merge_id, document_lists);
+    }
+
+    async write_state(merge_instance) {
+        if (!this.merge_id) {
+            return;
+        }
+        const json_string = JSON.stringify(merge_instance)
+        return await this.pocketbase.collection("MergeStates").update(this.merge_id, { "current_state": json_string }).then(() => true).catch((error) => console.log(error))
+    }
+
+    async read_state() {
+        const record = await this.pocketbase.collection("MergeStates").getOne(this.merge_id).catch(() => null);
+        if (record == null) {
+            return null;
+        }
+        return record.current_state;
+    }
+
+
+    async mark_completed() {
+        if (!this.merge_id) {
+            return;
+        }
+        return await this.pocketbase.collection("MergeStates").update(this.merge_id, { completed: true }).then(() => true).catch((error) => console.log(error));
     }
 }
 
 
-function* range(low, high) {
-    while (low <= high) {
-        yield [low];
-        low++;
-    }
-}
+// const pocketbase = new PocketBase("http://127.0.0.1:8090")
+// let answer = pocketbase.collection("JudgoStates").getFullList({ filter: `rater="7p3m6g3nza7qhf1" && completed=true` })
 
 
-let arr1 = [...range(1, 100)].sort((a, b) => b - a)
-let arr2 = [...range(23, 150)].sort((a, b) => b - a)
+// async function processRecords() {
+//     const val = await answer;
 
-let doc_list = [arr1, arr2]
+//     const doc_list = []
 
+//     val.forEach((record) => {
+//         let classes = record.current_state.equivalence_classes;
+//         doc_list.push(classes)
+//     });
 
+//     console.log(doc_list);
+// }
 
-let test_merge = new Merge(doc_list)
-
-
-while (!test_merge.over) {
-
-    if (test_merge.current_sort_element[0] === test_merge.current_comparison_element[0]) {
-        test_merge.equal()
-    } else if (test_merge.current_sort_element[0] >= test_merge.current_comparison_element[0]) {
-        test_merge.greater_than();
-    } else if (test_merge.current_sort_element[0] <= test_merge.current_comparison_element[0]) {
-        test_merge.less_than();
-    }
-}
-
-// console.log(test_merge);
+// processRecords();
 
 
-let main_list = test_merge.main_list
+// function* range(low, high) {
+//     while (low <= high) {
+//         yield [low];
+//         low++;
+//     }
+// }
+
+// function* matrix(x, y) {
+//     for (let i = 0; i < x; i++) {
+//         let row = []
+//         for (let j = 0; j < y; j++) {
+//             row.push(i + j)
+//         }
+//         yield row
+//     }
+// }
 
 
-let prev_num = undefined;
+// let table = [...matrix(10, 10)];
+// console.table(table)
 
-for (let arr of main_list) {
 
-    if (!(arr.every(val => val === arr[0]))) {
-        console.log("ERROR");
-        break;
-    }
+// let arr1 = [...range(1, 100)].sort((a, b) => b - a)
+// let arr2 = [...range(23, 150)].sort((a, b) => b - a)
 
-    if (prev_num === undefined) {
-        prev_num = arr[0]
-        continue;
-    }
+// let doc_list = [arr1, arr2]
 
-    if (prev_num < arr[0]) {
-        console.log("ERROR");
-        break;
-    }
 
-    prev_num = arr[0]
 
-}
+// let test_merge = new Merge(doc_list)
 
-console.log("SUCCES?");
 
-// console.log(main_list);
+// while (!test_merge.over) {
+
+//     if (test_merge.current_sort_element[0] === test_merge.current_comparison_element[0]) {
+//         test_merge.equal()
+//     } else if (test_merge.current_sort_element[0] >= test_merge.current_comparison_element[0]) {
+//         test_merge.greater_than();
+//     } else if (test_merge.current_sort_element[0] <= test_merge.current_comparison_element[0]) {
+//         test_merge.less_than();
+//     }
+// }
+
+// // console.log(test_merge);
+
+
+// let main_list = test_merge.main_list
+
+
+// let prev_num = undefined;
+
+// for (let arr of main_list) {
+
+//     if (!(arr.every(val => val === arr[0]))) {
+//         console.log("ERROR");
+//         break;
+//     }
+
+//     if (prev_num === undefined) {
+//         prev_num = arr[0]
+//         continue;
+//     }
+
+//     if (prev_num < arr[0]) {
+//         console.log("ERROR");
+//         break;
+//     }
+
+//     prev_num = arr[0]
+
+// }
+
