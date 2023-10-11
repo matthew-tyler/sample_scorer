@@ -243,7 +243,6 @@ export class Merge {
     #is_all_determined() {
         if (this.list_lower === this.list_upper) {
             this.main_list.splice(this.list_lower, 0, ...this.sort_list);
-            this.over = true;
         }
 
     }
@@ -276,13 +275,13 @@ export class Merge {
                 this.list_upper = this.current_lower - 1;
             }
 
+            this.#is_all_determined();
             this.#next_sort_element();
         } else {
             this.#next();
         }
 
 
-        this.#is_all_determined();
 
         await this.database.write_state(this.toObject());
         await this.#is_game_over();
@@ -311,9 +310,9 @@ export class Merge {
             this.list_upper = this.middle - 1;
         }
 
+        this.#is_all_determined();
         this.#next_sort_element();
 
-        this.#is_all_determined();
         await this.database.write_state(this.toObject());
         await this.#is_game_over();
     }
@@ -344,12 +343,12 @@ export class Merge {
                 this.list_upper = this.current_lower - 1;
             }
 
+            this.#is_all_determined();
             this.#next_sort_element();
         } else {
             this.#next();
         }
 
-        this.#is_all_determined();
         await this.database.write_state(this.toObject());
         await this.#is_game_over();
     }
