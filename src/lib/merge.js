@@ -32,11 +32,14 @@ export class Merge {
         this.document_lists = document_lists.reduce((acc, _, i, arr) => i % group_by === 0 ? [...acc, arr.slice(i, i + group_by).flat()] : acc, [])
             .sort((a, b) => a.length - b.length)
 
+
+        console.log(document_lists);
         // Picks the longest as the main list to sort into.
         this.main_list = this.document_lists.pop();
 
         // Takes the next largest as the sort list
         this.sort_list = this.document_lists.pop();
+
 
 
         this.current_upper = this.main_list.length - 1;
@@ -52,6 +55,9 @@ export class Merge {
         this.current_comparison_element = this.main_list[this.middle]
 
         this.over = false
+
+
+
     }
 
     /**
@@ -173,6 +179,10 @@ export class Merge {
      * @private
      */
     #next() {
+        if (this.#is_all_determined()) {
+            this.#next_sort_element();
+            return;
+        }
         this.middle = this.#middle_index()
         this.current_comparison_element = this.main_list[this.middle]
     }
@@ -195,6 +205,9 @@ export class Merge {
             this.sort_list = this.document_lists.pop();
             this.current_upper = this.main_list.length - 1;
             this.current_lower = 0;
+            this.list_upper = this.current_upper;
+            this.list_lower = 0;
+            console.log("here");
         }
 
         if (this.sort_list.length !== 0) {
@@ -241,10 +254,12 @@ export class Merge {
     // if list upper and lower == then all remaining elements are shoved in there
     // Needs to account for hte current sort element 
     #is_all_determined() {
-        if (this.list_lower === this.list_upper) {
+        if (this.list_lower >= this.list_upper) {
             this.main_list.splice(this.list_lower, 0, ...this.sort_list);
+            this.sort_list = []
+            return true;
         }
-
+        return false;
     }
 
     /**
@@ -274,8 +289,7 @@ export class Merge {
             } else {
                 this.list_upper = this.current_lower - 1;
             }
-
-            this.#is_all_determined();
+            this.#is_all_determined()
             this.#next_sort_element();
         } else {
             this.#next();
@@ -309,8 +323,7 @@ export class Merge {
         } else {
             this.list_upper = this.middle - 1;
         }
-
-        this.#is_all_determined();
+        this.#is_all_determined()
         this.#next_sort_element();
 
         await this.database.write_state(this.toObject());
@@ -342,8 +355,7 @@ export class Merge {
             } else {
                 this.list_upper = this.current_lower - 1;
             }
-
-            this.#is_all_determined();
+            this.#is_all_determined()
             this.#next_sort_element();
         } else {
             this.#next();
@@ -385,7 +397,6 @@ export class PBMergeWrapper {
             document_lists.push(classes)
         })
 
-        console.log(user_id);
 
         return new PBMergeWrapper(pocketbase, user_id, merge_id, document_lists);
     }
