@@ -17,6 +17,8 @@
 			const dao = await PBWrapper.create(pb, $current_user.id, $current_user.documents);
 			comparison_algorithm = await Judgo.fromDatabase(dao);
 		}
+
+		console.log(algo);
 	});
 
 	const IMG1 = 0;

@@ -8,6 +8,7 @@
 		});
 
 		if (solved.length >= 2) {
+			console.log(solved);
 			return 'merge';
 		}
 		return 'Judgo';
