@@ -7,8 +7,8 @@
 			filter: `rater="${$current_user.id}" && completed=true`
 		});
 
+		console.log(solved);
 		if (solved.length >= 2) {
-			console.log(solved);
 			return 'merge';
 		}
 		return 'Judgo';
