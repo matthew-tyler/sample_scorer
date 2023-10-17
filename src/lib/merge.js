@@ -32,8 +32,6 @@ export class Merge {
         this.document_lists = document_lists.reduce((acc, _, i, arr) => i % group_by === 0 ? [...acc, arr.slice(i, i + group_by).flat()] : acc, [])
             .sort((a, b) => a.length - b.length)
 
-
-        console.log(document_lists);
         // Picks the longest as the main list to sort into.
         this.main_list = this.document_lists.pop();
 
@@ -207,7 +205,6 @@ export class Merge {
             this.current_lower = 0;
             this.list_upper = this.current_upper;
             this.list_lower = 0;
-            console.log("here");
         }
 
         if (this.sort_list.length !== 0) {
@@ -426,96 +423,4 @@ export class PBMergeWrapper {
     }
 }
 
-
-// const pocketbase = new PocketBase("http://127.0.0.1:8090")
-// let answer = pocketbase.collection("JudgoStates").getFullList({ filter: `rater="7p3m6g3nza7qhf1" && completed=true` })
-
-
-// async function processRecords() {
-//     const val = await answer;
-
-//     const doc_list = []
-
-//     val.forEach((record) => {
-//         let classes = record.current_state.equivalence_classes;
-//         doc_list.push(classes)
-//     });
-
-//     console.log(doc_list);
-// }
-
-// processRecords();
-
-
-// function* range(low, high) {
-//     while (low <= high) {
-//         yield [low];
-//         low++;
-//     }
-// }
-
-// function* matrix(x, y) {
-//     for (let i = 0; i < x; i++) {
-//         let row = []
-//         for (let j = 0; j < y; j++) {
-//             row.push(i + j)
-//         }
-//         yield row
-//     }
-// }
-
-
-// let table = [...matrix(10, 10)];
-// console.table(table)
-
-
-// let arr1 = [...range(1, 100)].sort((a, b) => b - a)
-// let arr2 = [...range(23, 150)].sort((a, b) => b - a)
-
-// let doc_list = [arr1, arr2]
-
-
-
-// let test_merge = new Merge(doc_list)
-
-
-// while (!test_merge.over) {
-
-//     if (test_merge.current_sort_element[0] === test_merge.current_comparison_element[0]) {
-//         test_merge.equal()
-//     } else if (test_merge.current_sort_element[0] >= test_merge.current_comparison_element[0]) {
-//         test_merge.greater_than();
-//     } else if (test_merge.current_sort_element[0] <= test_merge.current_comparison_element[0]) {
-//         test_merge.less_than();
-//     }
-// }
-
-// // console.log(test_merge);
-
-
-// let main_list = test_merge.main_list
-
-
-// let prev_num = undefined;
-
-// for (let arr of main_list) {
-
-//     if (!(arr.every(val => val === arr[0]))) {
-//         console.log("ERROR");
-//         break;
-//     }
-
-//     if (prev_num === undefined) {
-//         prev_num = arr[0]
-//         continue;
-//     }
-
-//     if (prev_num < arr[0]) {
-//         console.log("ERROR");
-//         break;
-//     }
-
-//     prev_num = arr[0]
-
-// }
 
