@@ -294,7 +294,6 @@ export class PBWrapper {
 
     async next_category() {
 
-        console.log("ID", this.judgostate_id);
         if (!this.judgostate_id) {
             return;
         }
@@ -303,22 +302,14 @@ export class PBWrapper {
         const user_record = await this.pocketbase.collection('users').getOne(this.user_id, { expand: this.documents }).catch(err => console.log(err))
         const completed = record.map((record) => record.category)
 
-        console.log(completed);
-
-        console.log("TEST");
-        console.log(completed.length);
-
         if (completed.length >= 8) {
             this.judgostate_id = '';
             this.documents = ["game", "over"];
-            console.log('GAME OVER SET');
             return;
         }
 
 
         const next = user_record.documents.find(doc => !completed.includes(doc))
-
-        console.log(next);
 
         const judgo_state = await this.pocketbase.collection('JudgoStates').create({
             "rater": this.user_id,
